@@ -43,6 +43,41 @@ To run tests with coverage calculation, run the following command:
 npm run test-coverage
 ```
 
+# Syncing Changes
+
+## Setup
+Add the audius-protocol repo as a remote in your extracted repos:
+```bash
+git remote add audius-protocol ../audius-protocol
+git fetch audius-protocol
+```
+
+## Syncing with `audius-protocol`
+
+1. **Find eth-contracts-related commits in the audius-protocol repo:**
+```bash
+git log audius-protocol/main --oneline -- "eth-contracts/*"
+```
+
+2. **Cherry-pick specific commits:**
+```bash
+git cherry-pick <commit-hash>
+```
+
+3. **Test your changes:**
+```bash
+# Adjust based on your actual build/test commands
+npm run build
+npm run test
+```
+
+4. **Handle conflicts if they occur:**
+```bash
+# Fix conflicts manually, then:
+git add .
+git cherry-pick --continue
+```
+
 ## Security
 
 Please report security issues to `security@audius.co` with a description of the
