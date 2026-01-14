@@ -774,8 +774,8 @@ contract GovernanceV2 is InitializableV2 {
         _requireIsInitialized();
 
         require(
-            msg.sender == guardianAddress,
-            "Governance: Only guardian."
+            msg.sender == guardianAddress || msg.sender == address(this),
+            "Governance: Only guardian or self."
         );
 
         guardianAddress = _newGuardianAddress;
