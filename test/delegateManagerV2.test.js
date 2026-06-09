@@ -13,6 +13,7 @@ const ServiceTypeManager = artifacts.require('ServiceTypeManager')
 const ServiceProviderFactory = artifacts.require('ServiceProviderFactory')
 const Staking = artifacts.require('Staking')
 const DelegateManager = artifacts.require('DelegateManagerV2')
+const SameBlockClaimCaller = artifacts.require('SameBlockClaimCaller')
 
 const stakingProxyKey = web3.utils.utf8ToHex('StakingProxy')
 const serviceProviderFactoryKey = web3.utils.utf8ToHex('ServiceProviderFactory')
@@ -652,6 +653,19 @@ contract('DelegateManagerV2', async (accounts) => {
       assert.isTrue(
         spStake.eq(totalStakedForAccount),
         'Stake value in SPFactory and Staking.sol must be equal'
+      )
+    })
+
+    it('Prevents same-block duplicate reward claims', async () => {
+      const sameBlockClaimCaller = await SameBlockClaimCaller.new()
+
+      await _lib.assertRevert(
+        sameBlockClaimCaller.initiateAndClaimTwice(
+          claimsManager.address,
+          delegateManager.address,
+          stakerAccount
+        ),
+        'ClaimsManager: Claim already processed for user'
       )
     })
 

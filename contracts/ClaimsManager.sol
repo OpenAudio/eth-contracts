@@ -335,7 +335,7 @@ contract ClaimsManager is InitializableV2 {
         // Prevent duplicate claim
         uint256 lastUserClaimBlock = stakingContract.lastClaimedFor(_claimer);
         require(
-            lastUserClaimBlock <= currentRound.fundedBlock,
+            lastUserClaimBlock < currentRound.fundedBlock,
             "ClaimsManager: Claim already processed for user"
         );
         uint256 totalStakedAtFundBlockForClaimer = stakingContract.totalStakedForAt(
