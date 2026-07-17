@@ -75,7 +75,8 @@ const main = async () => {
     `Upgrade ClaimsManagerProxy to ${implementation}. ` +
     'The new implementation preserves the verified mainnet storage layout and ABI, ' +
     'and changes the duplicate-claim guard so a claim is valid only when ' +
-    'lastUserClaimBlock is strictly less than the current round funded block.'
+    'lastUserClaimBlock is strictly less than the current round funded block. ' +
+    'Source and review: https://github.com/OpenAudio/eth-contracts/pull/2'
   const result = await submitProposal({
     callData,
     description,
