@@ -1,5 +1,5 @@
 import * as _lib from '../utils/lib.js'
-const { deployProxy } = require('@openzeppelin/truffle-upgrades')
+const { validateImplementation } = require('@openzeppelin/truffle-upgrades')
 
 const AudiusToken = artifacts.require('AudiusToken')
 const Registry = artifacts.require('Registry')
@@ -12,7 +12,6 @@ const EthRewardsManager = artifacts.require('EthRewardsManager')
 const ServiceProviderFactory = artifacts.require('ServiceProviderFactory')
 const ServiceTypeManager = artifacts.require('ServiceTypeManager')
 const WormholeClient = artifacts.require('WormholeClient')
-const MockWormhole = artifacts.require('MockWormhole')
 const StakingUpgraded = artifacts.require('StakingUpgraded')
 const MockStakingCaller = artifacts.require('MockStakingCaller')
 const AudiusAdminUpgradeabilityProxy = artifacts.require(
@@ -184,6 +183,11 @@ contract('Upgrade proxy test', async (accounts) => {
 
     const impl = await proxy.implementation.call({ from: proxyAdminAddress })
     assert.equal(impl, staking0.address)
+    assert.equal(
+      await proxy.getAudiusProxyAdminAddress(),
+      mockGovAddr,
+      'Proxy must store the requested final admin after constructor initialization'
+    )
   })
 
   it('fail to call newFunction before upgrade', async () => {
@@ -272,9 +276,6 @@ contract('Upgrade proxy test', async (accounts) => {
   })
 
   it('Get & set contract governance address', async () => {
-    const registry2 = await Registry.new()
-    await registry2.initialize()
-
     let proxyGovAddr = await proxy.getAudiusProxyAdminAddress.call({
       from: proxyAdminAddress
     })
@@ -397,94 +398,25 @@ contract('Upgrade proxy test', async (accounts) => {
 
   it('Test upgrade safety for every contract', async function () {
     /**
-     * deployProxy runs tests to ensure proxy upgrade safety
+     * Runtime deployment tests use AudiusAdminUpgradeabilityProxy. Validate
+     * implementation safety without deploying an incompatible standard proxy.
      * https://docs.openzeppelin.com/upgrades-plugins/1.x/truffle-upgrades#test-usage
      */
-
-    // Registry
-    await deployProxy(Registry, [])
-
-    // Governance (using GovernanceV2 since Governance is not upgrade-safe)
-    const votingPeriod = 10
-    const executionDelay = votingPeriod
-    const votingQuorumPercent = 10
-    const maxInProgressProposals = 20
-    const governance = await deployProxy(GovernanceV2, [
-      registry.address,
-      votingPeriod,
-      executionDelay,
-      votingQuorumPercent,
-      maxInProgressProposals,
-      guardianAddress
-    ])
-
-    // AudiusToken
-    const tokenOwnerAddress = proxyDeployerAddress
-    const token = await deployProxy(AudiusToken, [
-      tokenOwnerAddress,
-      governance.address
-    ])
-
-    // ClaimsManager
-    const claimsManager = await deployProxy(ClaimsManager, [
-      token.address,
-      governance.address
-    ])
-
-    // EthRewardsManager
-    const mockWormhole = await MockWormhole.new()
-    const recipient = Buffer.from(
-      '0000000000000000000000000000000000000000000000000000000000000000',
-      'hex'
-    )
-    const antiAbuseOracleAddresses = [accounts[10], accounts[11], accounts[12]]
-    await deployProxy(EthRewardsManager, [
-      token.address,
-      governance.address,
-      mockWormhole.address,
-      recipient,
-      antiAbuseOracleAddresses
-    ])
-
-    // TrustedNotifierManager
-    const notifier1Wallet = accounts[13]
-    const notifier1Endpoint = 'notifier1Endpoint.com'
-    const notifier1Email = 'email@notifier1Endpoint.com'
-    await deployProxy(TrustedNotifierManager, [
-      governance.address,
-      notifier1Wallet,
-      notifier1Endpoint,
-      notifier1Email
-    ])
-
-    // DelegateManager
-    const undelegateLockupDuration = votingPeriod + executionDelay + 1
-    await deployProxy(DelegateManager, [
-      token.address,
-      governance.address,
-      undelegateLockupDuration
-    ])
-
-    // DelegateManagerV2 - tested in `delegateManager.test.js`
-
-    // ServiceProviderFactory
-    const decreaseStakeLockupDuration = undelegateLockupDuration
-    const deployerCutLockupDuration =
-      _lib.fromBN(await claimsManager.getFundingRoundBlockDiff()) + 1
-    await deployProxy(ServiceProviderFactory, [
-      governance.address,
-      claimsManager.address,
-      decreaseStakeLockupDuration,
-      deployerCutLockupDuration
-    ])
-
-    // ServiceTypeManager
-    await deployProxy(ServiceTypeManager, [governance.address])
-
-    // Staking
-    await deployProxy(Staking, [token.address, governance.address])
-
-    // WormholeClient
-    await deployProxy(WormholeClient, [token.address, mockWormhole.address])
+    const implementations = [
+      Registry,
+      GovernanceV2,
+      AudiusToken,
+      ClaimsManager,
+      EthRewardsManager,
+      TrustedNotifierManager,
+      DelegateManager,
+      ServiceProviderFactory,
+      ServiceTypeManager,
+      Staking,
+      WormholeClient
+    ]
+    for (const implementation of implementations) {
+      await validateImplementation(implementation)
+    }
   })
 })

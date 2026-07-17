@@ -1,10 +1,10 @@
 pragma solidity ^0.5.0;
 
-import "../InitializableV2.sol";
+import "./TestInitializableV2.sol";
 
 
 /** Simple test w/o storage */
-contract TestContract is InitializableV2 {
+contract TestContract is TestInitializableV2 {
 
     uint256 public x = 1;
 

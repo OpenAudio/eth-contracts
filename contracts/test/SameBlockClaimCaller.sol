@@ -3,6 +3,7 @@ pragma solidity ^0.5.0;
 import "../ClaimsManager.sol";
 import "../DelegateManagerV2.sol";
 
+
 contract SameBlockClaimCaller {
     function initiateAndClaimTwice(
         address _claimsManager,

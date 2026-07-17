@@ -1,5 +1,5 @@
 pragma solidity ^0.5.0;
-import "../InitializableV2.sol";
+import "./TestInitializableV2.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "../Staking.sol";
@@ -9,7 +9,7 @@ import "../AudiusAdminUpgradeabilityProxy.sol";
 // TEST ONLY MOCK CONTRACT
 // Forwards basic staking functions
 // Forwards ServiceProviderFactory functions as well
-contract MockStakingCaller is InitializableV2 {
+contract MockStakingCaller is TestInitializableV2 {
     using SafeERC20 for ERC20;
 
     uint256 max;
@@ -138,4 +138,3 @@ contract MockStakingCaller is InitializableV2 {
         return address(this);
     }
 }
-

@@ -7,8 +7,12 @@
   "scripts": {
     "postinstall": "patch-package",
     "truffle:compile": "truffle compile",
+    "truffle:compile-all": "truffle compile --all",
     "truffle:migrate": "truffle migrate --reset --network development",
     "truffle:console": "truffle console --network development",
+    "deploy:claims-manager-v2": "node scripts/mainnet/deploy-claims-manager-v2.js",
+    "propose:claims-manager-v2": "node scripts/mainnet/propose-claims-manager-v2-upgrade.js",
+    "propose:full-offender-slash": "node scripts/mainnet/propose-full-offender-slash.js",
     "test": "NODE_OPTIONS='--max-old-space-size=8192' truffle test test/*.test.js --network test",
     "test:random": "NODE_OPTIONS='--max-old-space-size=8192' truffle test test/random/random.test.js --network development",
     "test:verbose": "NODE_OPTIONS='--max-old-space-size=8192' truffle test test/*.test.js --network development --verbose-rpc",

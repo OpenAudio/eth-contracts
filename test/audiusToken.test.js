@@ -252,7 +252,7 @@ contract('AudiusToken', async (accounts) => {
   it('Confirm token reinitialization fails', async () => {
     await _lib.assertRevert(
       token.initialize(proxyDeployerAddress, accounts[13]),
-      'Contract instance has already been initialized'
+      'Only proxy admin can initialize'
     )
   })
 
