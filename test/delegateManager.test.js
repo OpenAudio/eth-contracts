@@ -1,6 +1,6 @@
 import * as _lib from '../utils/lib.js'
 const { time, expectEvent } = require('@openzeppelin/test-helpers')
-const { deployProxy, upgradeProxy } = require('@openzeppelin/truffle-upgrades')
+const { validateUpgrade } = require('@openzeppelin/truffle-upgrades')
 
 const AudiusAdminUpgradeabilityProxy = artifacts.require(
   'AudiusAdminUpgradeabilityProxy'
@@ -3785,25 +3785,18 @@ contract('DelegateManager', async (accounts) => {
 
     it('Test proxy upgrade safety via openzeppelin tooling', async () => {
       // https://docs.openzeppelin.com/upgrades-plugins/1.x/truffle-upgrades#test-usage
-      // deployProxy and upgradeProxy run some tests to ensure proxy upgrade safety
+      // Runtime deployment tests use AudiusAdminUpgradeabilityProxy. This check
+      // uses OpenZeppelin tooling only for implementation and storage safety.
+      await validateUpgrade(DelegateManager, DelegateManagerV2)
 
-      const delManP1 = await deployProxy(DelegateManager, [
-        token.address,
-        governance.address,
-        UNDELEGATE_LOCKUP_DURATION
-      ])
-      await upgradeProxy(delManP1, DelegateManagerV2)
-
-      const delManP2 = await deployProxy(DelegateManager, [
-        token.address,
-        governance.address,
-        UNDELEGATE_LOCKUP_DURATION
-      ])
+      let rejectedBadLayout = false
       try {
-        await upgradeProxy(delManP2, DelegateManagerV2Bad)
+        await validateUpgrade(DelegateManager, DelegateManagerV2Bad)
       } catch (e) {
+        rejectedBadLayout = true
         assert.isTrue(e.message.includes('New storage layout is incompatible'))
       }
+      assert.isTrue(rejectedBadLayout, 'Expected incompatible layout rejection')
     })
   })
 })

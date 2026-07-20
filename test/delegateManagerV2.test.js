@@ -9,10 +9,12 @@ const { time, expectEvent } = require('@openzeppelin/test-helpers')
 const AudiusAdminUpgradeabilityProxy = artifacts.require(
   'AudiusAdminUpgradeabilityProxy'
 )
+const ClaimsManagerV2 = artifacts.require('ClaimsManagerV2')
 const ServiceTypeManager = artifacts.require('ServiceTypeManager')
 const ServiceProviderFactory = artifacts.require('ServiceProviderFactory')
 const Staking = artifacts.require('Staking')
 const DelegateManager = artifacts.require('DelegateManagerV2')
+const SameBlockClaimCaller = artifacts.require('SameBlockClaimCaller')
 
 const stakingProxyKey = web3.utils.utf8ToHex('StakingProxy')
 const serviceProviderFactoryKey = web3.utils.utf8ToHex('ServiceProviderFactory')
@@ -625,7 +627,7 @@ contract('DelegateManagerV2', async (accounts) => {
           governance.address,
           UNDELEGATE_LOCKUP_DURATION
         ),
-        'Contract instance has already been initialized'
+        'Only proxy admin can initialize'
       )
     })
 
@@ -652,6 +654,95 @@ contract('DelegateManagerV2', async (accounts) => {
       assert.isTrue(
         spStake.eq(totalStakedForAccount),
         'Stake value in SPFactory and Staking.sol must be equal'
+      )
+    })
+
+    it('Prevents same-block duplicate reward claims', async () => {
+      const sameBlockClaimCaller = await SameBlockClaimCaller.new()
+
+      await _lib.assertRevert(
+        sameBlockClaimCaller.initiateAndClaimTwice(
+          claimsManager.address,
+          delegateManager.address,
+          stakerAccount
+        ),
+        'ClaimsManager: Claim already processed for user'
+      )
+    })
+
+    it('Prevents same-block duplicate reward claims after ClaimsManagerV2 upgrade', async () => {
+      const claimsManagerV2Implementation = await ClaimsManagerV2.new({
+        from: proxyDeployerAddress
+      })
+      const expectedStorage = await Promise.all(
+        Array.from({ length: 64 }, (_, slot) =>
+          web3.eth.getStorageAt(claimsManager.address, slot)
+        )
+      )
+      const expectedState = await Promise.all([
+        claimsManager.getGovernanceAddress(),
+        claimsManager.getStakingAddress(),
+        claimsManager.getServiceProviderFactoryAddress(),
+        claimsManager.getDelegateManagerAddress(),
+        claimsManager.getFundsPerRound()
+      ])
+
+      await governance.guardianExecuteTransaction(
+        claimsManagerProxyKey,
+        callValue0,
+        'upgradeTo(address)',
+        _lib.abiEncode(['address'], [claimsManagerV2Implementation.address]),
+        { from: guardianAddress }
+      )
+      const upgradedClaimsManager = await ClaimsManagerV2.at(
+        claimsManager.address
+      )
+      assert.deepEqual(
+        await Promise.all(
+          Array.from({ length: 64 }, (_, slot) =>
+            web3.eth.getStorageAt(claimsManager.address, slot)
+          )
+        ),
+        expectedStorage
+      )
+      assert.deepEqual(
+        await Promise.all([
+          upgradedClaimsManager.getGovernanceAddress(),
+          upgradedClaimsManager.getStakingAddress(),
+          upgradedClaimsManager.getServiceProviderFactoryAddress(),
+          upgradedClaimsManager.getDelegateManagerAddress(),
+          upgradedClaimsManager.getFundsPerRound()
+        ]),
+        expectedState
+      )
+      assert.strictEqual(
+        await upgradedClaimsManager.audiusToken(),
+        token.address
+      )
+
+      await _lib.assertRevert(
+        upgradedClaimsManager.initialize(token.address, stakerAccountInvalid, {
+          from: proxyDeployerAddress
+        }),
+        'Only proxy admin can initialize'
+      )
+      await _lib.assertRevert(
+        upgradedClaimsManager.initialize.call(
+          token.address,
+          stakerAccountInvalid,
+          { from: governance.address }
+        ),
+        'Contract instance has already been initialized'
+      )
+
+      const sameBlockClaimCaller = await SameBlockClaimCaller.new()
+      await _lib.assertRevert(
+        sameBlockClaimCaller.initiateAndClaimTwice(
+          claimsManager.address,
+          delegateManager.address,
+          stakerAccount
+        ),
+        'ClaimsManager: Claim already processed for user'
       )
     })
 

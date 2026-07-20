@@ -23,16 +23,22 @@ contract AudiusAdminUpgradeabilityProxy is UpgradeabilityProxy {
      * @param _proxyAdmin - address of proxy admin
      *      Set to governance contract address for all non-governance contracts
      *      Governance is deployed and upgraded to have own address as admin
-     * @param _data - data of function to be called on logic contract.
-     *      Passed to UpgradeabilityProxy constructor.
+     * @param _data - data of function to be called on logic contract after
+     *      temporarily setting the deployer as proxy admin.
      */
     constructor(
       address _logic,
       address _proxyAdmin,
       bytes memory _data
     )
-    UpgradeabilityProxy(_logic, _data) public payable
+    UpgradeabilityProxy(_logic, new bytes(0)) public payable
     {
+        proxyAdmin = msg.sender;
+        if (_data.length > 0) {
+            // solium-disable-next-line security/no-low-level-calls
+            (bool success,) = _logic.delegatecall(_data);
+            require(success, "Proxy initialization failed");
+        }
         proxyAdmin = _proxyAdmin;
     }
 

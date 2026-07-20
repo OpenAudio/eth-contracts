@@ -1,5 +1,5 @@
 diff --git a/node_modules/@openzeppelin/upgrades/contracts/Initializable.sol b/node_modules/@openzeppelin/upgrades/contracts/Initializable.sol
-index 09a4a05..41de827 100644
+index 09a4a05..b1e0681 100644
 --- a/node_modules/@openzeppelin/upgrades/contracts/Initializable.sol
 +++ b/node_modules/@openzeppelin/upgrades/contracts/Initializable.sol
 @@ -14,6 +14,10 @@ pragma solidity >=0.4.24 <0.7.0;
@@ -13,7 +13,13 @@ index 09a4a05..41de827 100644
  
    /**
     * @dev Indicates that the contract has been initialized.
-@@ -58,5 +62,5 @@ contract Initializable {
+@@ -29,4 +33,5 @@ contract Initializable {
+    * @dev Modifier to use in the initializer function of a contract.
+    */
+   modifier initializer() {
++    require(msg.sender == proxyAdmin, "Only proxy admin can initialize");
+     require(initializing || isConstructor() || !initialized, "Contract instance has already been initialized");
+@@ -58,5 +63,5 @@ contract Initializable {
    }
  
    // Reserved storage space to allow for layout changes in the future.

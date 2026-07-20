@@ -121,7 +121,7 @@ contract('Staking test', async (accounts) => {
   it('Confirm staking fails reinitialization', async () => {
     await _lib.assertRevert(
       staking.initialize(token.address, accounts[14]),
-      'Contract instance has already been initialized'
+      'Only proxy admin can initialize'
     )
   })
 
