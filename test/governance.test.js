@@ -424,6 +424,13 @@ contract('Governance.sol', async (accounts) => {
       'AudiusToken: Incident account frozen'
     )
     const otherBalance = await token.balanceOf(delegatorAccount1)
+    const stakingState = async () => ({
+      collateral: (await token.balanceOf(staking.address)).toString(),
+      total: (await staking.totalStaked()).toString(),
+      firstStaker: (await staking.totalStakedFor(stakerAccount1)).toString(),
+      secondStaker: (await staking.totalStakedFor(stakerAccount2)).toString()
+    })
+    const stakingBeforeBurn = await stakingState()
     // No second proposal, activation or privileged caller is required.
     const receipt = await upgraded.burnBinanceIncidentBalance({
       from: delegatorAccount1
@@ -442,6 +449,7 @@ contract('Governance.sol', async (accounts) => {
       (await token.balanceOf(delegatorAccount1)).toString(),
       otherBalance.toString()
     )
+    assert.deepEqual(await stakingState(), stakingBeforeBurn)
   })
 
   it('Confirm governance fails reinitialization', async () => {

@@ -329,9 +329,9 @@ contract('Staking test', async (accounts) => {
 
     // Confirm token total supply decreased after burn
     assert.equal(
-      await token.totalSupply(),
-      tokenInitialSupply - slashAmount,
-      'ruh roh'
+      (await token.totalSupply()).toString(),
+      tokenInitialSupply.sub(slashAmount).toString(),
+      'Token supply must decrease by the exact slash amount'
     )
   })
 

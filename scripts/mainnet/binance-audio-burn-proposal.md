@@ -70,4 +70,15 @@ node scripts/test-audius-token-v2.js --fork
 NODE_OPTIONS=--max-old-space-size=8192 npx truffle test test/*.test.js --network development --compile-none --migrate-none
 ```
 
+Additional compatibility validation passed: **281 existing protocol tests**, with one pre-existing skip, using verified V2 runtime bytecode in 186 shared token fixtures. After an incident-sized burn, all **17 staking, 15 claims and four bridge tests** passed; the staking run uses the corrected integer assertion. The voted upgrade/burn integration test also passed with explicit checks that existing staking collateral, total recorded stake and both active stakers' positions remain unchanged across the burn.
+
+The existing protocol scenarios can also run with V2 in every shared token fixture. This separate test configuration verifies the implementation runtime bytecode and excludes the dedicated upgrade tests, which require a V1 starting fixture and run under the normal configuration above:
+
+```sh
+NODE_OPTIONS=--max-old-space-size=8192 npx truffle test test/*.test.js --network development --config scripts/truffle-audius-token-v2.js --compile-none --migrate-none
+AUDIO_TEST_BURN=1 NODE_OPTIONS=--max-old-space-size=8192 npx truffle test test/staking.test.js test/claimsManager.test.js test/wormholeClient.test.js --network development --config scripts/truffle-audius-token-v2.js --compile-none --migrate-none
+```
+
+`AUDIO_TEST_PORT` overrides the local development port. The second command transfers the incident snapshot amount to the target and burns it in each fixture before exercising staking, claims and bridge behavior. The staking slashing assertion uses exact integer arithmetic so it also checks supplies that cannot be represented exactly by a JavaScript Number.
+
 `AUDIO_FORK_RPC` may override the script's default archive RPC. Test results and the reviewed commit are recorded in the PR. No implementation has been deployed and no live governance proposal or burn transaction has been submitted by this work.
