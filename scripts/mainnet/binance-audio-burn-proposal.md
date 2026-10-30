@@ -85,6 +85,8 @@ The PR includes proxy upgrade tests, authorization and amount boundary tests, st
 
 Verified results: **294 passing, zero failing**, with one pre-existing skipped `TODO - Upgrade token` test. All 12 new token tests and the new voted upgrade-and-burn integration test ran and passed. The compiler storage and ABI checks, pinned mainnet-fork test, and lint for the changed code also passed; the governance test file retains its existing unused-variable warnings.
 
+The fork test also checks the 2022 initializer recovery: `initialized` and `initializing` remain at slot 3, and all four inherited initializer signatures reject outsiders, the guardian directly, and Governance after the upgrade. The storage checker explicitly rejects builds missing the repository's OpenZeppelin initializer patch. Install dependencies with the `patch-package` postinstall enabled and verify the deployed runtime against that patched build before proposing the upgrade.
+
 Compile and test using the repository's pinned Node 16 toolchain:
 
 ```sh

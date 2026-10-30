@@ -75,6 +75,18 @@ function checkStorageLayout() {
       )
     )
   assert.deepStrictEqual(normalize(old), normalize(upgraded))
+  // Pin the 2022 recovery layout: comparing two unpatched builds is insufficient.
+  for (const [label, slot, offset] of [
+    ['proxyAdmin', '0', 0],
+    ['initialized', '3', 0],
+    ['initializing', '3', 1]
+  ]) {
+    const field = upgraded.storage.find((entry) => entry.label === label)
+    assert(
+      field && field.slot === slot && field.offset === offset,
+      `Missing Audius initializer recovery patch: ${label} must be at slot ${slot}, offset ${offset}`
+    )
+  }
   const oldAbi = artifact('AudiusToken').abi
   const upgradedAbi = artifact('AudiusTokenV2').abi
   for (const entry of oldAbi)
@@ -261,6 +273,17 @@ async function mainnetFork(storage) {
     await permit('19')
     const before = await snapshot()
     assert.strictEqual(before.balances[TARGET], '27409671117810725934467774')
+    const initializerFlags = web3.utils.toBN(before.slots['3'])
+    assert.strictEqual(
+      initializerFlags.and(web3.utils.toBN('255')).toNumber(),
+      1,
+      'Mainnet initialized flag must be true at slot 3 offset 0'
+    )
+    assert.strictEqual(
+      initializerFlags.shrn(8).and(web3.utils.toBN('255')).toNumber(),
+      0,
+      'Mainnet initializing flag must be false at slot 3 offset 1'
+    )
     const implementation = await new web3.eth.Contract(
       artifact('AudiusTokenV2').abi
     )
@@ -272,6 +295,28 @@ async function mainnetFork(storage) {
       [implementation.options.address]
     )
     assert.deepStrictEqual(await snapshot(), before)
+    for (const [signature, values] of [
+      ['initialize()', []],
+      ['initialize(address)', [deployer]],
+      ['initialize(address,address)', [deployer, GOVERNANCE]],
+      ['initialize(string,string,uint8)', ['Changed', 'BAD', '6']]
+    ]) {
+      for (const [caller, reason] of [
+        [deployer, 'Only proxy admin can initialize'],
+        [guardian, 'Only proxy admin can initialize'],
+        [GOVERNANCE, 'Contract instance has already been initialized']
+      ]) {
+        await assert.rejects(
+          token.methods[signature](...values).call({ from: caller }),
+          (error) => error.message.includes(reason),
+          `${signature} must reject ${caller} with ${reason}`
+        )
+      }
+    }
+    assert.deepStrictEqual(await snapshot(), before)
+    console.log(
+      'PASS: 2022 initializer flags remain at slot 3; all four inherited initializers reject outsiders, the guardian directly, and Governance after upgrade'
+    )
     console.log(
       `PASS: mainnet proxy upgrade at fork block ${FORK_BLOCK}; sampled balances, raw storage, roles, metadata, permit nonce and allowances preserved`
     )
