@@ -15,6 +15,7 @@ const DelegateManager = artifacts.require('DelegateManager')
 const TestContract = artifacts.require('TestContract')
 const Registry = artifacts.require('Registry')
 const AudiusToken = artifacts.require('AudiusToken')
+const AudiusTokenV2 = artifacts.require('AudiusTokenV2')
 const MockAccount = artifacts.require('MockAccount')
 
 const stakingProxyKey = web3.utils.utf8ToHex('StakingProxy')
@@ -355,6 +356,91 @@ contract('Governance.sol', async (accounts) => {
     assert.isTrue(
       initialBalance.eq(finalBalance.add(defaultStakeAmount)),
       'Expected initialBalance == finalBalance + defaultStakeAmount'
+    )
+  })
+
+  it('freezes the incident balance with one voted upgrade and lets an unrelated caller burn it', async () => {
+    const target = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
+    const amount = _lib.toBN('27409671117810725934467774')
+    await token.transfer(target, amount, { from: tokenOwnerAddress })
+    // eth_call proves the old implementation still allows outgoing transfers.
+    await token.contract.methods
+      .transfer(delegatorAccount1, '1')
+      .call({ from: target })
+    const implementation = await AudiusTokenV2.new({
+      from: proxyDeployerAddress
+    })
+    const propose = async (signature, types, values) => {
+      const tx = await governance.submitProposal(
+        tokenRegKey,
+        callValue0,
+        signature,
+        _lib.abiEncode(types, values),
+        'AUDIO incident freeze',
+        'Test immediate freeze via one AUDIO upgrade proposal',
+        { from: stakerAccount1 }
+      )
+      const id = tx.logs.find((log) => log.event === 'ProposalSubmitted').args
+        ._proposalId
+      await governance.submitVote(id, Vote.Yes, { from: stakerAccount1 })
+      return { id, block: tx.receipt.blockNumber }
+    }
+    const evaluate = async ({ id, block }) => {
+      await time.advanceBlockTo(block + votingPeriod + executionDelay)
+      const result = await governance.evaluateProposalOutcome(id, {
+        from: stakerAccount1
+      })
+      assert.equal(
+        (await governance.getProposalById(id)).outcome.toString(),
+        Outcome.ApprovedExecuted.toString()
+      )
+      return result
+    }
+
+    const upgrade = await propose(
+      'upgradeTo(address)',
+      ['address'],
+      [implementation.address]
+    )
+    await token.transfer(target, '7', { from: tokenOwnerAddress })
+    const supply = await token.totalSupply()
+    await evaluate(upgrade)
+    assert.equal(await tokenProxy.implementation(), implementation.address)
+    const upgraded = await AudiusTokenV2.at(token.address)
+    assert.equal(
+      (await upgraded.balanceOf(target)).toString(),
+      amount.addn(7).toString()
+    )
+    await _lib.assertRevert(
+      upgraded.contract.methods
+        .transfer(delegatorAccount1, '1')
+        .call({ from: target }),
+      'AudiusToken: Incident account frozen'
+    )
+    await _lib.assertRevert(
+      upgraded.transferFrom(target, delegatorAccount1, '1', {
+        from: delegatorAccount1
+      }),
+      'AudiusToken: Incident account frozen'
+    )
+    const otherBalance = await token.balanceOf(delegatorAccount1)
+    // No second proposal, activation or privileged caller is required.
+    const receipt = await upgraded.burnBinanceIncidentBalance({
+      from: delegatorAccount1
+    })
+    await expectEvent.inTransaction(receipt.tx, AudiusTokenV2, 'Transfer', {
+      from: target,
+      to: _lib.addressZero,
+      value: amount.addn(7)
+    })
+    assert.equal((await upgraded.balanceOf(target)).toString(), '0')
+    assert.equal(
+      (await upgraded.totalSupply()).toString(),
+      supply.sub(amount).subn(7).toString()
+    )
+    assert.equal(
+      (await token.balanceOf(delegatorAccount1)).toString(),
+      otherBalance.toString()
     )
   })
 
