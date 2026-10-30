@@ -2,6 +2,8 @@
 
 Two separate proposals: first add an amount-based governance burn function to the existing AUDIO token proxy, then use it to burn the specified balance at the incident address. No token pause is required.
 
+Implementation and tests: [OpenAudio eth-contracts PR 3](https://github.com/OpenAudio/eth-contracts/pull/3).
+
 ## Proposal 1 Enable governance burns
 
 **Name:** Enable governance controlled AUDIO burns
@@ -80,6 +82,8 @@ After the burn, verify the proposal outcome and receipt, the standard Transfer e
 ## Tests and review
 
 The PR includes proxy upgrade tests, authorization and amount boundary tests, state preservation and existing token behavior checks, and an integration test that executes the upgrade and burn through two normal governance votes.
+
+Verified results: **294 passing, zero failing**, with one pre-existing skipped `TODO - Upgrade token` test. All 12 new token tests and the new voted upgrade-and-burn integration test ran and passed. The compiler storage and ABI checks, pinned mainnet-fork test, and lint for the changed code also passed; the governance test file retains its existing unused-variable warnings.
 
 Compile and test using the repository's pinned Node 16 toolchain:
 
