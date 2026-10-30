@@ -1,5 +1,4 @@
-// Storage-layout verification, plus an optional isolated mainnet-fork integration test.
-// No user private key is loaded and no transaction is sent to the upstream RPC.
+// Add --fork to test on isolated Ganache; upstream RPC receives reads only.
 const assert = require('assert')
 const fs = require('fs')
 const path = require('path')

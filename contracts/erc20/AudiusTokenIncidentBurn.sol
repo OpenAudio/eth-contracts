@@ -8,20 +8,17 @@ interface IncidentBurnProxyAdmin {
 }
 
 
-/** Incident-specific, single-use burn. No arbitrary-address burn capability. */
 contract AudiusTokenIncidentBurn is AudiusToken {
     address public constant BINANCE_INCIDENT_ACCOUNT = 0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10;
 
-    // Appended after all inherited storage. Never reset during subsequent upgrades.
+    // Preserve this appended slot in future upgrades.
     bool public binanceIncidentBurnExecuted;
 
     event BinanceIncidentBurn(address indexed account, uint256 amount);
 
     /**
-     * @notice Burn the incident account's entire execution-time balance exactly once.
-     * @dev Proxy-admin authorization includes the guardian acting through Governance.
-     *      Callable while paused, matching existing burns. Does not freeze transfers.
-     *      A zero balance reverts without consuming the single-use authorization.
+     * @notice Burn the incident account's current balance once.
+     * @dev Also callable by the guardian through Governance, including while paused.
      */
     function burnBinanceIncidentBalance() external {
         _requireIsInitialized();
