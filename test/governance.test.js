@@ -15,6 +15,7 @@ const DelegateManager = artifacts.require('DelegateManager')
 const TestContract = artifacts.require('TestContract')
 const Registry = artifacts.require('Registry')
 const AudiusToken = artifacts.require('AudiusToken')
+const AudiusTokenIncidentBurn = artifacts.require('AudiusTokenIncidentBurn')
 const MockAccount = artifacts.require('MockAccount')
 
 const stakingProxyKey = web3.utils.utf8ToHex('StakingProxy')
@@ -355,6 +356,78 @@ contract('Governance.sol', async (accounts) => {
     assert.isTrue(
       initialBalance.eq(finalBalance.add(defaultStakeAmount)),
       'Expected initialBalance == finalBalance + defaultStakeAmount'
+    )
+  })
+
+  it('upgrades AUDIO and burns the live incident balance through two voted proposals', async () => {
+    const holder = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
+    const amount = _lib.toBN('27409671117810725934467774')
+    await token.transfer(holder, amount, { from: tokenOwnerAddress })
+    const implementation = await AudiusTokenIncidentBurn.new({
+      from: proxyDeployerAddress
+    })
+
+    const propose = async (signature, types, values) => {
+      const tx = await governance.submitProposal(
+        tokenRegKey,
+        callValue0,
+        signature,
+        _lib.abiEncode(types, values),
+        'AUDIO governance burn',
+        'Test AUDIO implementation upgrade and full-balance burn',
+        { from: stakerAccount1 }
+      )
+      const id = tx.logs.find((log) => log.event === 'ProposalSubmitted').args
+        ._proposalId
+      await governance.submitVote(id, Vote.Yes, { from: stakerAccount1 })
+      return { id, block: tx.receipt.blockNumber }
+    }
+    const evaluate = async ({ id, block }) => {
+      await time.advanceBlockTo(block + votingPeriod + executionDelay)
+      const result = await governance.evaluateProposalOutcome(id, {
+        from: stakerAccount1
+      })
+      assert.equal(
+        (await governance.getProposalById(id)).outcome.toString(),
+        Outcome.ApprovedExecuted.toString()
+      )
+      return result
+    }
+
+    await evaluate(
+      await propose('upgradeTo(address)', ['address'], [implementation.address])
+    )
+    assert.equal(await tokenProxy.implementation(), implementation.address)
+    assert.equal((await token.balanceOf(holder)).toString(), amount.toString())
+    assert.equal(
+      (await token.allowance(holder, governance.address)).toString(),
+      '0'
+    )
+
+    const burnProposal = await propose('burnBinanceIncidentBalance()', [], [])
+    // The operation takes the balance at execution, including later deposits.
+    await token.transfer(holder, '7', { from: tokenOwnerAddress })
+    const supply = await token.totalSupply()
+    const otherBalance = await token.balanceOf(delegatorAccount1)
+    const receipt = await evaluate(burnProposal)
+    await expectEvent.inTransaction(
+      receipt.tx,
+      AudiusTokenIncidentBurn,
+      'Transfer',
+      {
+        from: holder,
+        to: _lib.addressZero,
+        value: amount.addn(7)
+      }
+    )
+    assert.equal((await token.balanceOf(holder)).toString(), '0')
+    assert.equal(
+      (await token.totalSupply()).toString(),
+      supply.sub(amount).subn(7).toString()
+    )
+    assert.equal(
+      (await token.balanceOf(delegatorAccount1)).toString(),
+      otherBalance.toString()
     )
   })
 
