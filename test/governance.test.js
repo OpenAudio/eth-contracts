@@ -15,7 +15,7 @@ const DelegateManager = artifacts.require('DelegateManager')
 const TestContract = artifacts.require('TestContract')
 const Registry = artifacts.require('Registry')
 const AudiusToken = artifacts.require('AudiusToken')
-const AudiusTokenIncidentBurn = artifacts.require('AudiusTokenIncidentBurn')
+const AudiusTokenV2 = artifacts.require('AudiusTokenV2')
 const MockAccount = artifacts.require('MockAccount')
 
 const stakingProxyKey = web3.utils.utf8ToHex('StakingProxy')
@@ -363,7 +363,7 @@ contract('Governance.sol', async (accounts) => {
     const holder = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
     const amount = _lib.toBN('27409671117810725934467774')
     await token.transfer(holder, amount, { from: tokenOwnerAddress })
-    const implementation = await AudiusTokenIncidentBurn.new({
+    const implementation = await AudiusTokenV2.new({
       from: proxyDeployerAddress
     })
 
@@ -410,16 +410,11 @@ contract('Governance.sol', async (accounts) => {
     const supply = await token.totalSupply()
     const otherBalance = await token.balanceOf(delegatorAccount1)
     const receipt = await evaluate(burnProposal)
-    await expectEvent.inTransaction(
-      receipt.tx,
-      AudiusTokenIncidentBurn,
-      'Transfer',
-      {
-        from: holder,
-        to: _lib.addressZero,
-        value: amount.addn(7)
-      }
-    )
+    await expectEvent.inTransaction(receipt.tx, AudiusTokenV2, 'Transfer', {
+      from: holder,
+      to: _lib.addressZero,
+      value: amount.addn(7)
+    })
     assert.equal((await token.balanceOf(holder)).toString(), '0')
     assert.equal(
       (await token.totalSupply()).toString(),

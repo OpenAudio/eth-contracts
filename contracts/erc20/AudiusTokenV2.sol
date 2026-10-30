@@ -8,7 +8,7 @@ interface IncidentBurnProxyAdmin {
 }
 
 
-contract AudiusTokenIncidentBurn is AudiusToken {
+contract AudiusTokenV2 is AudiusToken {
     address public constant BINANCE_INCIDENT_ACCOUNT = 0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10;
 
     // Preserve this appended slot in future upgrades.

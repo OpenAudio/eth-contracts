@@ -1,11 +1,11 @@
 import * as lib from '../utils/lib.js'
 const { expectEvent } = require('@openzeppelin/test-helpers')
-const Incident = artifacts.require('AudiusTokenIncidentBurn')
+const Incident = artifacts.require('AudiusTokenV2')
 const Proxy = artifacts.require('AudiusAdminUpgradeabilityProxy')
 const TARGET = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
 const key = web3.utils.utf8ToHex('Token')
 
-contract('AudiusTokenIncidentBurn', (accounts) => {
+contract('AudiusTokenV2', (accounts) => {
   const [, admin, guardian, holder, spender] = accounts
   const amount = web3.utils.toBN('27409671117810725934467774')
   let token, proxy, governance, original, implementation, before

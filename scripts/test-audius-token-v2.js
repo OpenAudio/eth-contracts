@@ -44,7 +44,7 @@ function checkStorageLayout() {
       )
     }
   }
-  add('contracts/erc20/AudiusTokenIncidentBurn.sol')
+  add('contracts/erc20/AudiusTokenV2.sol')
   const output = JSON.parse(
     soljson.cwrap('solidity_compile', 'string', ['string', 'number', 'number'])(
       JSON.stringify({
@@ -64,8 +64,8 @@ function checkStorageLayout() {
     output.contracts['contracts/erc20/AudiusToken.sol'].AudiusToken
       .storageLayout
   const upgraded =
-    output.contracts['contracts/erc20/AudiusTokenIncidentBurn.sol']
-      .AudiusTokenIncidentBurn.storageLayout
+    output.contracts['contracts/erc20/AudiusTokenV2.sol'].AudiusTokenV2
+      .storageLayout
   // Contract names and AST IDs identify source declarations, not storage locations or types.
   const normalize = (value) =>
     JSON.parse(
@@ -99,7 +99,7 @@ function checkStorageLayout() {
     )
   }
   const oldAbi = artifact('AudiusToken').abi
-  const upgradedAbi = artifact('AudiusTokenIncidentBurn').abi
+  const upgradedAbi = artifact('AudiusTokenV2').abi
   for (const entry of oldAbi)
     assert(
       upgradedAbi.some(
@@ -170,10 +170,7 @@ async function mainnetFork(storage) {
       method: 'evm_setAccountBalance',
       params: [guardian, '0x3635c9adc5dea00000']
     })
-    const token = new web3.eth.Contract(
-      artifact('AudiusTokenIncidentBurn').abi,
-      TOKEN
-    )
+    const token = new web3.eth.Contract(artifact('AudiusTokenV2').abi, TOKEN)
     const proxy = new web3.eth.Contract(
       artifact('AudiusAdminUpgradeabilityProxy').abi,
       TOKEN
@@ -301,9 +298,9 @@ async function mainnetFork(storage) {
       'Mainnet initializing flag must be false at slot 3 offset 1'
     )
     const implementation = await new web3.eth.Contract(
-      artifact('AudiusTokenIncidentBurn').abi
+      artifact('AudiusTokenV2').abi
     )
-      .deploy({ data: artifact('AudiusTokenIncidentBurn').bytecode })
+      .deploy({ data: artifact('AudiusTokenV2').bytecode })
       .send({ from: deployer, gas: 6000000 })
     await execute(
       'upgradeTo(address)',
