@@ -30,8 +30,8 @@ lib.deployToken = async (artifacts, ...args) => {
     'Fixture must execute the exact V2 runtime'
   )
   if (burnBeforeTests) {
-    const target = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
-    const amount = web3.utils.toBN('27409671117810725934467774')
+    const target = '0xCe9d97EE40Aa605aC117c333B5397839cc3fE807'
+    const amount = web3.utils.toBN('19651690000000000000000000')
     const supply = await token.totalSupply()
     // args: proxy admin, deployer, token owner, governance.
     await token.transfer(target, amount, { from: args[2] })

@@ -5,7 +5,7 @@ import "./AudiusToken.sol";
 
 /** Incident-specific outgoing transfer freeze and permissionless burn, without new storage. */
 contract AudiusTokenV2 is AudiusToken {
-    address public constant BINANCE_INCIDENT_ACCOUNT = 0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10;
+    address public constant BINANCE_INCIDENT_ACCOUNT = 0xCe9d97EE40Aa605aC117c333B5397839cc3fE807;
 
     /**
      * @notice Anyone may burn this account's entire current balance, including later deposits.

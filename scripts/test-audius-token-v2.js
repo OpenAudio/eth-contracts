@@ -10,10 +10,12 @@ const artifact = (name) =>
   require(path.join(ROOT, 'build/contracts', `${name}.json`))
 const TOKEN = '0x18aAA7115705e8be94bfFEBDE57Af9BFc265B998'
 const GOVERNANCE = '0x4DEcA517D6817B6510798b7328F2314d3003AbAC'
-const TARGET = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
+const TARGET = '0xCe9d97EE40Aa605aC117c333B5397839cc3fE807'
 const ORIGINAL_IMPLEMENTATION = '0x930C746a6e92ca8122682DF48CD5020bC1771b32'
-const FORK_BLOCK = 26302886
+const FORK_BLOCK = 26314010
 const ZERO = '0x0000000000000000000000000000000000000000'
+const FORMER_TARGET = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
+const STAKING = '0xe6D97B2099F142513be7A2a068bE040656Ae4591'
 
 function checkStorageLayout() {
   const directory = path.join(
@@ -164,6 +166,7 @@ async function mainnetFork(storage) {
       artifact('GovernanceV2').abi,
       GOVERNANCE
     )
+    const staking = new web3.eth.Contract(artifact('Staking').abi, STAKING)
     const execute = (signature, types, values) =>
       governance.methods
         .guardianExecuteTransaction(
@@ -231,6 +234,8 @@ async function mainnetFork(storage) {
       const balances = {}
       for (const address of [
         TARGET,
+        FORMER_TARGET,
+        STAKING,
         GOVERNANCE,
         holder,
         spender,
@@ -244,6 +249,7 @@ async function mainnetFork(storage) {
         balances,
         slots,
         supply: await token.methods.totalSupply().call(),
+        totalStaked: await staking.methods.totalStaked().call(),
         name: await token.methods.name().call(),
         symbol: await token.methods.symbol().call(),
         decimals: await token.methods.decimals().call(),
@@ -279,7 +285,7 @@ async function mainnetFork(storage) {
       .send({ from: TARGET, gas: 100000 })
     await token.methods.transfer(holder, '1').call({ from: TARGET })
     const before = await snapshot()
-    assert.strictEqual(before.balances[TARGET], '27409671117810725934467774')
+    assert.strictEqual(before.balances[TARGET], '19651690000000000000000000')
     const initializerFlags = web3.utils.toBN(before.slots['3'])
     assert.strictEqual(
       initializerFlags.and(web3.utils.toBN('255')).toNumber(),
@@ -302,6 +308,7 @@ async function mainnetFork(storage) {
       [implementation.options.address]
     )
     assert.deepStrictEqual(await snapshot(), before)
+    await token.methods.transfer(holder, '1').call({ from: FORMER_TARGET })
     for (const [signature, values] of [
       ['initialize()', []],
       ['initialize(address)', [deployer]],
@@ -381,6 +388,7 @@ async function mainnetFork(storage) {
       )
     for (const field of [
       'name',
+      'totalStaked',
       'symbol',
       'decimals',
       'domain',
@@ -423,6 +431,40 @@ async function mainnetFork(storage) {
     )
     console.log(
       'PASS: immediate transfer/transferFrom freeze with old and new allowances; permissionless full-balance burn, supply/event accounting, empty repeat and later-deposit burn; other holders retain signed permit/transferFrom'
+    )
+    // Proposal 163 points to this already-deployed, obsolete V2. A later execution
+    // would overwrite the replacement: the Governance hash pins proxy code only.
+    const obsolete = '0xF88688434497364A2848fFafceAC35635E9877aB'
+    await execute('upgradeTo(address)', ['address'], [obsolete])
+    assert.strictEqual(
+      await token.methods.BINANCE_INCIDENT_ACCOUNT().call(),
+      FORMER_TARGET
+    )
+    await token.methods
+      .transfer(TARGET, '9')
+      .send({ from: holder, gas: 150000 })
+    await token.methods
+      .transfer(holder, '9')
+      .send({ from: TARGET, gas: 150000 })
+    await assert.rejects(
+      token.methods.transfer(holder, '1').call({ from: FORMER_TARGET }),
+      /Incident account frozen/
+    )
+    await execute(
+      'upgradeTo(address)',
+      ['address'],
+      [implementation.options.address]
+    )
+    await token.methods
+      .transfer(TARGET, '3')
+      .send({ from: holder, gas: 150000 })
+    await assert.rejects(
+      token.methods.transfer(holder, '1').call({ from: TARGET }),
+      /Incident account frozen/
+    )
+    await burn()
+    console.log(
+      'PASS: obsolete proposal-163 implementation removes the recipient freeze; restoring the replacement freezes and burns it again'
     )
   } finally {
     await provider.disconnect()
