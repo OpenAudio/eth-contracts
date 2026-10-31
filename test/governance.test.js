@@ -360,8 +360,8 @@ contract('Governance.sol', async (accounts) => {
   })
 
   it('freezes the incident balance with one voted upgrade and lets an unrelated caller burn it', async () => {
-    const target = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
-    const amount = _lib.toBN('27409671117810725934467774')
+    const target = '0xCe9d97EE40Aa605aC117c333B5397839cc3fE807'
+    const amount = _lib.toBN('19651690000000000000000000')
     await token.transfer(target, amount, { from: tokenOwnerAddress })
     // eth_call proves the old implementation still allows outgoing transfers.
     await token.contract.methods

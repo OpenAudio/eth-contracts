@@ -10,10 +10,11 @@ const key = web3.utils.utf8ToHex('Token')
 contract('AudiusTokenV2', (accounts) => {
   const [, proxyAdmin, deployer, holder, other, spender, minter, pauser] =
     accounts
-  const TARGET = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
+  const TARGET = '0xCe9d97EE40Aa605aC117c333B5397839cc3fE807'
+  const FORMER_TARGET = '0xA97bF7836F8A08F9Ed91D41453D371493FAE8d10'
   const frozen = 'AudiusToken: Incident account frozen'
   const guardian = deployer
-  const amount = web3.utils.toBN('27409671117810725934467774')
+  const amount = web3.utils.toBN('19651690000000000000000000')
   const permitOwner = '0xaaa30A4bB636F15be970f571BcBe502005E9D66b'
   const permitKey = Buffer.from(
     '76195632b07afded1ae36f68635b6ff86791bd4579a27ca28ec7e539fed65c0e',
@@ -45,9 +46,11 @@ contract('AudiusTokenV2', (accounts) => {
   before(async () => {
     // Local Ganache impersonation only; no incident private key is used.
     assert.equal(await web3.eth.getChainId(), 1337)
-    await rpc('evm_addAccount', [TARGET, 'local-test'])
-    await rpc('personal_unlockAccount', [TARGET, 'local-test', 0])
-    await rpc('evm_setAccountBalance', [TARGET, '0x3635c9adc5dea00000'])
+    for (const address of [TARGET, FORMER_TARGET]) {
+      await rpc('evm_addAccount', [address, 'local-test'])
+      await rpc('personal_unlockAccount', [address, 'local-test', 0])
+      await rpc('evm_setAccountBalance', [address, '0x3635c9adc5dea00000'])
+    }
   })
   const state = async () => ({
     name: await token.name(),
@@ -143,6 +146,16 @@ contract('AudiusTokenV2', (accounts) => {
       )
     }
     assert.deepEqual(await state(), beforeUpgrade)
+  })
+
+  it('targets only the traced recipient and leaves the former address outside the restriction', async () => {
+    await token.transfer(FORMER_TARGET, '17', { from: deployer })
+    await token.transfer(other, '7', { from: FORMER_TARGET })
+    await token.approve(spender, '3', { from: FORMER_TARGET })
+    await token.transferFrom(FORMER_TARGET, other, '3', { from: spender })
+    await burn()
+    assert.equal((await token.balanceOf(FORMER_TARGET)).toString(), '7')
+    assert.equal((await token.balanceOf(TARGET)).toString(), '0')
   })
 
   it('blocks transferFrom with pre-upgrade and new allowances without consuming them', async () => {
