@@ -405,6 +405,14 @@ contract('EthRewardsManager', async (accounts) => {
       value: 1
     })
 
+    await _lib.assertRevert(
+      ethRewardsManager.transferToSolana(1, 1, {
+        from: accounts[7],
+        value: 1
+      }),
+      'EthRewardsManager: arbiter fee must be zero'
+    )
+
     const tx = await ethRewardsManager.transferToSolana(0, 1, {
       from: accounts[7],
       value: 1

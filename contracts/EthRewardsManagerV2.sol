@@ -104,6 +104,7 @@ contract EthRewardsManagerV2 is InitializableV2 {
     uint32 _nonce
   ) external payable {
     _requireIsInitialized();
+    require(arbiterFee == 0, 'EthRewardsManager: arbiter fee must be zero');
 
     uint256 balance = audiusToken.balanceOf(address(this));
     audiusToken.approve(address(wormhole), balance);
